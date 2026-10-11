@@ -1,9 +1,3 @@
-/*
-arm-none-eabi-objdump -d main.elf
-make clean
-make
-STM32_Programmer_CLI -c port=SWD freq=1000  sn=066EFF485570854967101553 -w main.bin 0x08000000 -rst
-*/
 #include <stdint.h>
 #include "device.h"
 

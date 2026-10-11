@@ -1,0 +1,10 @@
+build/
+*.map
+*.elf
+*.o
+*.bin
+*.hex
+
+temp_251024.md
+auto_git_push.bat
+open_vscode.bat

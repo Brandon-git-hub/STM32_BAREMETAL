@@ -1,16 +1,18 @@
 
+[Github Repo](https://github.com/Brandon-git-hub/STM32_BAREMETAL)
 
-## 1. 安裝環境
+## Devices
 
+**燒錄工具:** NUCLEO-F767ZI
+
+**Target MCU:** STM32F072VBT6
+
+## 安裝環境
 
 ### 🧩 一、安裝 Arm GNU Toolchain（最通用、官方版本）
 
 官方來源：
 🔗 **[Arm Developer – GNU Arm Embedded Toolchain](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads)**
-
----
-
-#### ✅ 建議下載版本
 
 選擇：
 
@@ -22,27 +24,7 @@
 arm-gnu-toolchain-14.3.rel1-mingw-w64-i686-arm-none-eabi.exe
 ```
 
----
-
-### 📦 安裝建議
-
-* 路徑建議：
-
-  ```
-  C:\Toolchains\arm-gnu\
-  ```
-
-  （**不要放在含空白的目錄**如 `Program Files`）
-* 勾選：
-
-  * [x] Add to PATH（若沒選，可手動加）
-
----
-
-### 🔧 驗證環境變數
-
-開 PowerShell：
-
+測試:
 ```powershell
 arm-none-eabi-gcc --version
 arm-none-eabi-objcopy --version
@@ -57,42 +39,6 @@ arm-none-eabi-gcc (Arm GNU Toolchain 13.2.Rel1) ...
 
 代表環境就緒 ✅
 
----
-
-### 🧠 二、理解它與普通 GCC 的差異
-
-| 指令                      | 用途               | 說明                   |
-| ----------------------- | ---------------- | -------------------- |
-| `arm-none-eabi-gcc`     | C/C++ 編譯器        | 專為 ARM Cortex-M (裸機) |
-| `arm-none-eabi-as`      | 組譯器              | 處理 `.s` 檔            |
-| `arm-none-eabi-ld`      | 連結器              | 處理 linker script     |
-| `arm-none-eabi-objcopy` | 轉換 ELF → BIN/HEX | 產生可燒錄檔               |
-| `arm-none-eabi-size`    | 顯示段大小            | text/data/bss 大小     |
-| `arm-none-eabi-gdb`     | 除錯器              | 可連 ST-LINK/OpenOCD   |
-
-它是完整「裸機 ARM 開發工具鏈」。
-
----
-
-### ⚙️ 三、建立最小測試專案（確認工具鏈可用）
-
-#### 🗂️ 建立結構
-
-在某個資料夾（例如 `D:\toolchain_test`）：
-
-```bash
-main.c
-```
-
-#### ✍️ 內容
-
-```c
-int main(void) {
-    while (1) {}
-}
-```
-
----
 
 #### 🧱 編譯指令
 
@@ -111,21 +57,8 @@ text    data     bss     dec     hex filename
 
 以及 `main.bin`。
 
----
 
-#### 📘 解釋：
-
-* `-mcpu=cortex-m0` → 告訴編譯器生成對應指令集。
-* `-mthumb` → 使用 Thumb 指令集（Cortex-M 必備）。
-* `-O0` / `-O2` → 優化選項（裸機常用 `-O2` 或 `-Os`）。
-* `-nostdlib` / `-ffreestanding` → 之後在連結時用來避免鏈接 libc。
-
-目前你只是讓編譯器確認能輸出 ARM ELF 檔。
-下一步我們就能把這工具鏈導入到你的 **p003_baremetal/Makefile**。
-
----
-
-### ✅ 四、檢查最重要一點
+### ✅ 檢查最重要一點
 
 要確定 **這支編譯器能生成 Cortex-M0 Thumb 指令集**。
 可用：
@@ -146,7 +79,7 @@ arm-none-eabi-objdump -d main.elf | more
 這就是 Thumb 指令（非 x86），表示完全正確。
 
 
-### 五、 燒錄
+### 燒錄
 STM32_Programmer_CLI -c port=SWD freq=18000  sn=066EFF485570854967101553 -w main.bin 0x08000000 -rst
 ```
       -------------------------------------------------------------------
@@ -169,3 +102,26 @@ Device type : MCU
 Device CPU  : Cortex-M0
 BL Version  : 0xA1
 ```
+
+
+## 專案
+
+### Cmake
+```bat
+@REM 砍掉舊 build（把錯誤的 Cache 清乾淨）
+rm build -Recurse -Force
+@REM 告訴 CMake 如何讀取您的專案並生成建構腳本
+cmake -S . -B build -G "Ninja"
+@REM 啟動編譯和連結的過程
+cmake --build build -j
+@REM 執行燒錄
+cmake --build build --target flash
+```
+| 指令 | 階段 | 參數 | 作用 | 裸機開發中的意義 |
+| :--- | :--- | :--- | :--- | :--- |
+| `cmake -S . -B build -G "Ninja"` | **配置與生成** | `-S .` | 指定原始碼目錄 (Source Directory) 為當前目錄 (`.`)。 | 告訴 CMake `CMakeLists.txt` 在哪裡。 |
+| | | `-B build` | 指定建構目錄 (Build Directory) 為 `build` 子目錄。 | 將所有生成的中間檔案和最終輸出 (.elf, .bin, .hex) 集中存放。 |
+| | | `-G "Ninja"` | 指定建構生成器 (Generator) 為 **Ninja**。 | 讓 CMake 輸出高效的 `build.ninja` 腳本，為快速編譯打基礎。 |
+| `cmake --build build -j` | **建構與編譯** | `cmake --build build` | 啟動標準 CMake 建構流程，並指向 `build` 目錄。 | 這是啟動編譯的標準化、跨平台方式 (它會自動調用 Ninja)。 |
+| | | `-j` | 傳遞給底層建構工具 (Ninja) 的選項。 | 告訴 Ninja **使用電腦所有可用的 CPU 核心**進行平行編譯，極大加速編譯時間。 |
+
